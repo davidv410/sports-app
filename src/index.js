@@ -1,9 +1,27 @@
+import 'dotenv/config'
 import express from 'express'
+import http from 'http'
+import { attachWebSocketServer } from './ws/server.js'
+import { matchRouter } from './routes/matches.js'
+import { securityMiddleware } from './ws/arcjet.js'
+
+const PORT = Number(process.env.PORT || 8000)
+const HOST = process.env.HOST || '0.0.0.0'
 
 const app = express()
+const server = http.createServer(app)
 
-console.log(process.env.DATABASE_URL)
+app.use(express.json())
 
-app.listen(5000, () => {
-    console.log('server is up')
+app.use(securityMiddleware)
+
+app.use('/matches', matchRouter)
+
+const { broadcastMatchCreated } = attachWebSocketServer(server)
+app.locals.broadcastMatchCreated = broadcastMatchCreated
+
+server.listen(PORT, HOST, () => {
+    const baseUrl = HOST === '0.0.0.0' ? `http://localhost:${PORT}` : `http://${HOST}:${PORT}`
+    console.log(`Server is running on ${baseUrl}`)
+    console.log(`WebSocket Server is running on ${baseUrl.replace('http', 'ws')}/ws`)
 })
